@@ -6,7 +6,7 @@ import requests
 from .naming import get_name
 
 
-class Performer:
+class Probe:
     def __init__(self):
         self.root = {
             'children': [],
