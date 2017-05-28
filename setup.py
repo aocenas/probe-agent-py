@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='probe-agent',
-    version='0.1',
+    version='1.0.0',
     description='Probe agent',
     url='http://github.com/aocenas/probe-agent-agent-py',
     author='Andrej Ocenas',
