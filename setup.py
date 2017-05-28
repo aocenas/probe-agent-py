@@ -8,7 +8,7 @@ setup(
     author='Andrej Ocenas',
     author_email='mr.ocenas@gmail.com',
     license='MIT',
-    packages=['probe-agent'],
+    packages=['probe_agent'],
     install_requires=[
         'requests',
     ],
