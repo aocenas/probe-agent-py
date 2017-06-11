@@ -7,7 +7,7 @@ from .naming import get_name
 
 
 class Probe:
-    def __init__(self):
+    def __init__(self, port: int=19876, name: str=None):
         self.root = {
             'children': [],
             'start': timeit.default_timer(),
@@ -15,6 +15,8 @@ class Probe:
         self.stack = [self.root]
         self.call = 0
         self.ret = 0
+        self.port = port
+        self.name = name
 
     def __enter__(self):
         self.root['start'] = timeit.default_timer()
@@ -29,7 +31,11 @@ class Probe:
 
         if not exc_type:
             js = json.dumps(self.root, indent=4)
-            requests.post('http://localhost:19876', data=js)
+            requests.post(
+                f'http://localhost:{self.port}',
+                params={'name': self.name},
+                data=js
+            )
 
     def _profile(self, frame, event, arg):
         if event in ['call', 'c_call']:
