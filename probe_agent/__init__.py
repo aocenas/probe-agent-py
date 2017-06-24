@@ -1,65 +1,59 @@
+import os
 import json
 import sys
 import timeit
+import psutil
+import uuid
 
 import requests
 from .naming import get_name
 
+mega = float(2 ** 20)
+
 
 class Probe:
     def __init__(self, port: int=19876, name: str=None):
-        self.root = {
-            'children': [],
-            'start': timeit.default_timer(),
-        }
-        self.stack = [self.root]
-        self.call = 0
-        self.ret = 0
+        self.uuid = uuid.uuid4()
         self.port = port
         self.name = name
+        self.buffer = []
 
     def __enter__(self):
-        self.root['start'] = timeit.default_timer()
         sys.setprofile(self._profile)
 
     def __exit__(self, exc_type, exc_value, traceback):
         sys.setprofile(None)
-        self.root['end'] = timeit.default_timer()
 
-        # last one is usually our own __exit__ func
-        self.root['children'].pop()
+        self.buffer.append({
+            'type': 'end',
+            'time': timeit.default_timer(),
+        })
 
-        if not exc_type:
-            js = json.dumps(self.root, indent=4)
-            requests.post(
-                f'http://localhost:{self.port}',
-                params={'name': self.name},
-                data=js
-            )
+        self._push()
 
     def _profile(self, frame, event, arg):
-        if event in ['call', 'c_call']:
-            self.call += 1
-
-            current = self.stack.pop()
-            child = {
+        if event in ['call', 'c_call', 'return', 'c_return', 'c_exception']:
+            event = {
+                'type': event,
                 'func': get_name(event, frame, arg),
                 'line': frame.f_code.co_firstlineno,
                 'file': frame.f_code.co_filename,
-                'children': [],
+                'time': timeit.default_timer(),
+                'mem': psutil.Process(os.getpid()).memory_info()[0] / mega
             }
-            current['children'].append(child)
-            self.stack.append(current)
-            self.stack.append(child)
-            child['start'] = timeit.default_timer()
 
-        if event in ['return', 'c_return', 'c_exception']:
-            self.ret += 1
-            end = timeit.default_timer()
-            if len(self.stack) > 1:
-                current = self.stack.pop()
-                current['end'] = end
-                current['total'] = current['end'] - current['start']
-                current['self'] = current['total'] - sum([child['total'] for child in current['children']])
+            self.buffer.append(event)
 
+            if len(self.buffer) >= 1000:
+                self._push()
 
+    def _push(self):
+        requests.post(
+            f'http://localhost:{self.port}',
+            params={
+                'name': self.name,
+                'uuid': self.uuid,
+            },
+            data='\n'.join([json.dumps(event) for event in self.buffer])
+        )
+        self.buffer = []

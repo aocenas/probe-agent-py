@@ -11,6 +11,7 @@ setup(
     packages=['probe_agent'],
     install_requires=[
         'requests',
+        'psutil'
     ],
     keywords=['perf', 'monitoring', 'profiling'],
     zip_safe=False
